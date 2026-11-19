@@ -4,18 +4,7 @@
 [![rank](https://make.fun/badge/gta6-cover-art-01/hellolucyheart/gta6-cover-art-sakura/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![reward](https://make.fun/badge/gta6-cover-art-01/hellolucyheart/gta6-cover-art-sakura/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 
-Sakura Vice — a web app that turns your photos and a caption into cover art in the style of GTA 6's posters: multi-panel layouts, bold condensed lettering, a Vice City sunset or neon colour grade, and PNG export in the post sizes 1080 × 1080, 1080 × 1350 and 1920 × 1080. It runs offline in a desktop browser from its own static files: photos never leave the machine.
-
-## What it does
-
-- **Four layouts** — Hero (one photo full-bleed), Split (two photos, diagonal seam), Strip (three slanted bands) and Grid 2×2, the multi-panel poster look.
-- **Any photo** — upload up to four of your own, or start from the four built-in samples (two photos plus two vector scenes drawn by the app itself). Drag the cover to pan, slide to zoom, per panel.
-- **Shuffle** — one click randomises the layout, the colour grade, the four photo slots and the caption, so you can riff on ideas fast; every shuffle is a new roll of the same seeded dice.
-- **Caption editing** — title and tagline, drawn as bold condensed caps with a black outline, white fill and pink echo.
-- **Six colour grades** — Vice Sunset, Neon Nights, Golden Hour, Teal Noir, Miami Pastel and the new Cotton Candy (bubblegum pink over sky blue), plus a sun disc, palm and skyline silhouettes, birds, film grain and a poster frame, all drawn in code.
-- **Fast export** — one click writes the cover as a PNG at 1080 × 1080, 1080 × 1350 or 1920 × 1080.
-
-Everything is the app's own: no Rockstar Games logo, artwork or fonts — lettering uses the system font stack, and the sample scenes are drawn procedurally on canvas.
+Sakura Vice is a browser cover-art studio in the style of GTA 6 posters: pick a layout (hero, split, strip or 2×2 grid), drop in a photo or a drawn vector scene, pan and zoom each panel, pick a colour grade — including a pink-and-blue cotton-candy grade — add a bold title and tagline, and export the cover as a PNG in 1080×1080, 1080×1350 or 1920×1080.
 
 ## Run it
 
@@ -23,20 +12,25 @@ Everything is the app's own: no Rockstar Games logo, artwork or fonts — letter
 node serve.ts
 ```
 
-Then open http://localhost:8080 in desktop Chrome. Pick photos, a layout, a grade and a caption, hit Shuffle for a surprise, then Export PNG.
+Then open http://localhost:8080 in a desktop browser. Everything runs offline from static files; photos never leave the machine. The two sample photos in `app/samples/` were made for make.fun and are free to use, and the two drawn scenes are generated in the browser from seed 17.
 
-## Layout
+## How it works
 
-- `main.ts` — the entrypoint the grader runs: copies `app/` and `screenshots/` to `/output` and writes `/output/dossier.json`.
-- `app/index.html` — the editor page. `app/src/main.js` wires the controls, `app/src/cover.js` draws the cover, `app/src/samples.js` draws the two vector sample scenes, `app/src/shots.js` sets up the fixed screenshot scenes.
-- `app/samples/` — two sample photos, free to use (from the make.fun kit).
-- `screenshots/` — four captures: the wide cover first, then the editor with photos loaded, then the portrait and square covers.
-- `shots.json` — the four screenshot scenes (query + size each).
-- `vendor/makefun-app.ts` — the make.fun dossier library, copied from the kit unchanged.
+- `app/index.html` + `app/style.css` — the workbench: layout and grade pickers, caption fields, photo slots, export buttons.
+- `app/src/samples.js` — the photo catalogue: two sample photos, two seeded vector scenes, and the upload slot.
+- `app/src/cover.js` — the renderer: panel layouts, cover-fit pan/zoom, colour grades, caption lettering, PNG export.
+- `app/src/shots.js` — the four seeded screenshot presets (`?shot=grid|editor|split|hero`).
+- `app/src/main.js` — the editor wiring: drag to pan, scroll to zoom, upload, shuffle, export.
+- `main.ts` — the program entrypoint: copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the kit library.
 
 ## Screenshots
 
-The four shots in `screenshots/` are taken by the app itself: `?shot=cover` draws one exported cover alone at its export size, `?shot=editor` shows the editor with photos loaded. Each shot is deterministic (fixed seed 13).
+1. `1-cover-grid.jpg` — grid cover, cotton-candy grade, SUNSET HEIST.
+2. `2-editor.jpg` — the editor with a photo loaded.
+3. `3-cover-split.jpg` — split cover, neon grade, NEON HARBOR.
+4. `4-cover-hero.jpg` — hero cover, sunset grade, BOULEVARD QUEEN.
+
+Fan-made cover maker. No Rockstar Games artwork, logos or fonts.
 
 ---
 

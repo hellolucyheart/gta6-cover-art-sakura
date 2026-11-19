@@ -1,107 +1,86 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sakura Vice — GTA 6 Cover Art Studio</title>
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-  <section class="controls" aria-label="Cover controls">
+<header class="masthead">
+  <div class="masthead-title">
     <h1>SAKURA VICE</h1>
-    <p class="tag">GTA 6-style cover art studio. Your photos never leave this machine.</p>
+    <p>Cover Art Studio &middot; in the style of a Leonida sunset</p>
+  </div>
+  <div class="masthead-badge">GTA 6 &middot; fan-made cover maker</div>
+</header>
 
-    <fieldset class="photos">
-      <legend>Photos — drag the cover to pan, slide to zoom</legend>
-      <div class="slot">
-        <label for="source-0">Panel 1</label>
-        <select id="source-0">
-          <option value="none">No photo</option>
-          <option value="pier" selected>Sample: Pier</option>
-          <option value="boulevard">Sample: Boulevard</option>
-          <option value="neon">Sample: Neon Dusk</option>
-          <option value="palms">Sample: Palm Sunset</option>
-          <option value="upload">Upload your own…</option>
-        </select>
-        <input id="file-0" type="file" accept="image/*" hidden>
-        <input id="zoom-0" type="range" min="100" max="250" value="100" aria-label="Zoom panel 1">
+<main class="workbench">
+  <section class="controls" aria-label="Cover controls">
+    <div class="control-group">
+      <span class="control-label">Layout</span>
+      <div class="button-row" id="layoutRow">
+        <button type="button" data-layout="hero">Hero</button>
+        <button type="button" data-layout="split">Split</button>
+        <button type="button" data-layout="strip">Strip</button>
+        <button type="button" data-layout="grid" class="active">Grid</button>
       </div>
-      <div class="slot">
-        <label for="source-1">Panel 2</label>
-        <select id="source-1">
-          <option value="none">No photo</option>
-          <option value="pier">Sample: Pier</option>
-          <option value="boulevard" selected>Sample: Boulevard</option>
-          <option value="neon">Sample: Neon Dusk</option>
-          <option value="palms">Sample: Palm Sunset</option>
-          <option value="upload">Upload your own…</option>
-        </select>
-        <input id="file-1" type="file" accept="image/*" hidden>
-        <input id="zoom-1" type="range" min="100" max="250" value="100" aria-label="Zoom panel 2">
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Colour grade</span>
+      <div class="button-row" id="gradeRow">
+        <button type="button" data-grade="sunset">Sunset</button>
+        <button type="button" data-grade="neon">Neon</button>
+        <button type="button" data-grade="cotton" class="active">Cotton Candy</button>
+        <button type="button" data-grade="noir">Noir</button>
       </div>
-      <div class="slot">
-        <label for="source-2">Panel 3</label>
-        <select id="source-2">
-          <option value="none">No photo</option>
-          <option value="pier">Sample: Pier</option>
-          <option value="boulevard">Sample: Boulevard</option>
-          <option value="neon" selected>Sample: Neon Dusk</option>
-          <option value="palms">Sample: Palm Sunset</option>
-          <option value="upload">Upload your own…</option>
-        </select>
-        <input id="file-2" type="file" accept="image/*" hidden>
-        <input id="zoom-2" type="range" min="100" max="250" value="100" aria-label="Zoom panel 3">
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Caption</span>
+      <label class="field">Title
+        <input id="titleInput" type="text" maxlength="24" value="SUNSET HEIST" autocomplete="off">
+      </label>
+      <label class="field">Tagline
+        <input id="taglineInput" type="text" maxlength="32" value="LEONIDA HEAT" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Photo slots</span>
+      <p class="hint">Click a panel on the cover to select it, then pick its photo. Drag to pan, scroll to zoom.</p>
+      <div class="slot-list" id="slotList"></div>
+      <label class="upload">Upload your own photo
+        <input id="uploadInput" type="file" accept="image/*" hidden>
+      </label>
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Export PNG</span>
+      <div class="button-row" id="exportRow">
+        <button type="button" data-export="1080x1080">1080 &times; 1080</button>
+        <button type="button" data-export="1080x1350">1080 &times; 1350</button>
+        <button type="button" data-export="1920x1080">1920 &times; 1080</button>
       </div>
-      <div class="slot">
-        <label for="source-3">Panel 4</label>
-        <select id="source-3">
-          <option value="none">No photo</option>
-          <option value="pier">Sample: Pier</option>
-          <option value="boulevard">Sample: Boulevard</option>
-          <option value="neon">Sample: Neon Dusk</option>
-          <option value="palms" selected>Sample: Palm Sunset</option>
-          <option value="upload">Upload your own…</option>
-        </select>
-        <input id="file-3" type="file" accept="image/*" hidden>
-        <input id="zoom-3" type="range" min="100" max="250" value="100" aria-label="Zoom panel 4">
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Layout</legend>
-      <label class="choice"><input type="radio" name="layout" value="hero"> Hero</label>
-      <label class="choice"><input type="radio" name="layout" value="split"> Split</label>
-      <label class="choice"><input type="radio" name="layout" value="strip"> Strip</label>
-      <label class="choice"><input type="radio" name="layout" value="grid" checked> Grid 2×2</label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Colour grade</legend>
-      <label class="choice"><input type="radio" name="grade" value="sunset" checked> Vice Sunset</label>
-      <label class="choice"><input type="radio" name="grade" value="neon"> Neon Nights</label>
-      <label class="choice"><input type="radio" name="grade" value="gold"> Golden Hour</label>
-      <label class="choice"><input type="radio" name="grade" value="noir"> Teal Noir</label>
-      <label class="choice"><input type="radio" name="grade" value="pastel"> Miami Pastel</label>
-      <label class="choice"><input type="radio" name="grade" value="cotton"> Cotton Candy</label>
-    </fieldset>
-
-    <label>Title <input id="title" type="text" maxlength="28" value="SUNSET HEIST"></label>
-    <label>Tagline <input id="tagline" type="text" maxlength="40" value="LEONIDA HEAT"></label>
-
-    <fieldset>
-      <legend>Export size</legend>
-      <label class="choice"><input type="radio" name="size" value="square" checked> 1080 × 1080</label>
-      <label class="choice"><input type="radio" name="size" value="portrait"> 1080 × 1350</label>
-      <label class="choice"><input type="radio" name="size" value="wide"> 1920 × 1080</label>
-    </fieldset>
-
-    <button id="shuffle" type="button">Shuffle — surprise me</button>
-    <button id="export" type="button">Export PNG</button>
-    <p id="status" role="status"></p>
+      <button type="button" id="shuffleButton" class="shuffle">Shuffle the cover</button>
+      <p class="hint" id="statusLine">Ready.</p>
+    </div>
   </section>
-  <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
+
+  <section class="stage" aria-label="Cover preview">
+    <canvas id="coverCanvas" width="1080" height="1080"></canvas>
+    <p class="stage-caption">Live preview &mdash; drag a panel to pan, scroll to zoom, click to select.</p>
+  </section>
 </main>
-<script type="module" src="./src/main.js"></script>
+
+<footer class="footnote">
+  <p>Fan-made cover maker. No Rockstar Games artwork, logos or fonts. Photos stay on your machine.</p>
+</footer>
+
+<script src="src/samples.js"></script>
+<script src="src/cover.js"></script>
+<script src="src/shots.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>

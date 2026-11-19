@@ -1,31 +1,258 @@
-/* Sakura Vice editor styles: dark neon panel, pink accent, poster canvas. */
-html, body { margin: 0; min-height: 100%; background: #150a20; color: #f6f0f7; font: 15px/1.45 system-ui, sans-serif; }
-.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 24px; box-sizing: border-box; }
-.controls { display: flex; flex-direction: column; gap: 14px; width: 320px; flex: none; }
-.controls h1 { margin: 0; font-size: 34px; letter-spacing: 2px; font-family: "Arial Black", Impact, sans-serif; color: #fff; text-shadow: 3px 3px 0 #ff2e88, 6px 6px 0 rgba(0, 220, 255, 0.55); }
-.tag { margin: 0; color: #cbb9d8; }
-fieldset { border: 1px solid #4d2c66; border-radius: 10px; padding: 10px 12px; margin: 0; }
-legend { font-weight: 700; color: #ffd166; padding: 0 6px; }
-.photos { display: flex; flex-direction: column; gap: 10px; }
-.slot { display: grid; grid-template-columns: 64px 1fr; gap: 6px 8px; align-items: center; }
-.slot label { font-weight: 600; }
-.slot select { grid-column: 2; }
-.slot input[type=range] { grid-column: 2; width: 100%; accent-color: #ff2e88; }
-label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-input[type=text], select { font: inherit; color: #f6f0f7; background: #261043; padding: 8px; border: 1px solid #6e4b89; border-radius: 6px; }
-.choice { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 400; margin-right: 12px; }
-.choice input { accent-color: #ff2e88; }
-button { font: inherit; font-weight: 800; letter-spacing: 1px; padding: 12px; border: 0; border-radius: 8px; background: linear-gradient(90deg, #ff2e88, #ff7a3d); color: #fff; cursor: pointer; }
-button:hover { filter: brightness(1.12); }
-button#shuffle { background: linear-gradient(90deg, #7b2ff7, #00c8ff); }
-#status { margin: 0; color: #cbb9d8; min-height: 1.4em; }
-canvas { width: min(72vh, 62vw); height: auto; max-height: 88vh; background: #f6f0f7; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); cursor: grab; touch-action: none; }
-canvas:active { cursor: grabbing; }
-body.shot-cover .controls { display: none; }
-body.shot-cover .app { padding: 0; gap: 0; }
-body.shot-cover canvas { width: 100vw; height: 100vh; max-height: none; object-fit: contain; box-shadow: none; }
+:root {
+  --ink: #241423;
+  --paper: #fff7f2;
+  --panel: #ffffff;
+  --line: #e8cdd8;
+  --pink: #ff5da2;
+  --violet: #7b5cff;
+  --cyan: #37d6e0;
+  --amber: #ffb347;
+  --muted: #8a6f84;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+}
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 28px;
+  background: linear-gradient(100deg, #ff5da2 0%, #ff8a5c 38%, #7b5cff 78%, #37d6e0 100%);
+  color: #fff;
+}
+
+.masthead-title h1 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 4px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.masthead-title p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.masthead-badge {
+  padding: 8px 14px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.workbench {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.control-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button-row button,
+.shuffle,
+.upload {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+}
+
+.button-row button.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.button-row button:hover,
+.shuffle:hover,
+.upload:hover {
+  border-color: var(--pink);
+}
+
+.field {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fff;
+  text-transform: uppercase;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.slot-row .slot-name {
+  width: 58px;
+  flex: none;
+  font-weight: bold;
+}
+
+.slot-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+.slot-row.selected .slot-name {
+  color: var(--pink);
+}
+
+.upload {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+  background: #ffeef6;
+}
+
+.shuffle {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(100deg, var(--pink), var(--violet));
+  border: none;
+  color: #fff;
+  font-weight: bold;
+}
+
+.stage {
+  min-width: 0;
+}
+
+#coverCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(36, 20, 35, 0.28);
+  cursor: grab;
+  touch-action: none;
+}
+
+#coverCanvas:active { cursor: grabbing; }
+
+.stage-caption {
+  margin: 12px 2px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.footnote {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 28px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Screenshot mode: hide every control so the cover fills the frame. */
+body.shot-cover .masthead,
+body.shot-cover .controls,
+body.shot-cover .footnote,
+body.shot-cover .stage-caption {
+  display: none;
+}
+
+body.shot-cover {
+  background: #14060f;
+}
+
+body.shot-cover .workbench {
+  display: block;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+body.shot-cover .stage { width: 100%; }
+
+body.shot-cover #coverCanvas {
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 @media (max-width: 900px) {
-  .app { flex-direction: column; align-items: center; }
-  .controls { width: min(92vw, 420px); }
-  canvas { width: min(92vw, 640px); }
+  .workbench { grid-template-columns: 1fr; }
+  .masthead-title h1 { font-size: 26px; }
 }

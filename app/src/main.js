@@ -1,232 +1,308 @@
-// Sakura Vice wiring (round 2): photo slots, layout and grade controls,
-// caption editing, drag-to-pan cropping, Shuffle, and PNG export in the
-// three post sizes. Photos never leave the machine: uploads are read with
-// FileReader only.
+/* Sakura Vice — editor wiring.
+ * Loads the photos, wires every control, renders the live preview,
+ * and handles drag-to-pan, scroll-to-zoom, upload and PNG export. */
+(function () {
+  'use strict';
 
-import { renderCover, computePanels, COLOR_GRADES, seededRandom } from './cover.js';
-import { buildSampleScene } from './samples.js';
-import { runShot } from './shots.js';
+  var Samples = window.SakuraViceSamples;
+  var Cover = window.SakuraViceCover;
+  var Shots = window.SakuraViceShots;
 
-/** The three post sizes the bounty asks for. */
-export const POST_SIZES = {
-  square: { label: 'Square 1080 x 1080', w: 1080, h: 1080 },
-  portrait: { label: 'Portrait 1080 x 1350', w: 1080, h: 1350 },
-  wide: { label: 'Wide 1920 x 1080', w: 1920, h: 1080 },
-};
+  var canvas = document.getElementById('coverCanvas');
+  var ctx = canvas.getContext('2d');
 
-/** Caption ideas the Shuffle button can roll. */
-export const SHUFFLE_CAPTIONS = [
-  { title: 'SUNSET HEIST', tagline: 'LEONIDA HEAT' },
-  { title: 'NEON HARBOR', tagline: 'MIDNIGHT DRIVE' },
-  { title: 'BOULEVARD QUEEN', tagline: 'GOLDEN HOUR' },
-  { title: 'VICE CITY BLUES', tagline: 'COTTON CANDY SKIES' },
-  { title: 'PALM TREE HUSTLE', tagline: 'NO SLEEP IN LEONIDA' },
-  { title: 'TWO LANES OUT', tagline: 'LAST LIGHT, FIRST GEAR' },
-];
+  var state = {
+    layout: 'grid',
+    grade: 'cotton',
+    title: 'SUNSET HEIST',
+    tagline: 'LEONIDA HEAT',
+    panels: Samples.SLOT_DEFAULTS.map(function (source) {
+      return { source: source, dx: 0, dy: 0, zoom: 1.1 };
+    })
+  };
 
-/** One photo slot: an image (or canvas scene) plus its crop. */
-function freshSlot() {
-  return { img: null, zoom: 1, panX: 0, panY: 0, source: 'none' };
-}
+  var selectedPanel = 0;
+  var images = {}; /* source id -> loaded image or scene canvas */
+  var uploadedImage = null;
+  var shuffleStep = 0;
 
-export const studioState = {
-  photos: [freshSlot(), freshSlot(), freshSlot(), freshSlot()],
-  layout: 'grid',
-  grade: 'sunset',
-  title: 'SUNSET HEIST',
-  tagline: 'LEONIDA HEAT',
-  size: 'square',
-  seed: 13,
-};
+  function loadPhotos() {
+    var jobs = Samples.PHOTOS.map(function (photo) {
+      if (photo.kind === 'scene') {
+        images[photo.id] = Cover.sceneCanvas(photo, 900);
+        return Promise.resolve();
+      }
+      return new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () {
+          images[photo.id] = img;
+          resolve();
+        };
+        img.onerror = function () { resolve(); };
+        img.src = photo.src;
+      });
+    });
+    return Promise.all(jobs);
+  }
 
-const preview = document.getElementById('cover');
-const statusLine = document.getElementById('status');
+  function render() {
+    var w = canvas.width;
+    var h = canvas.height;
+    Cover.renderCover(ctx, state, w, h, images);
+  }
 
-/** Loads an image from a URL, resolving once it can be drawn. */
-export function fetchImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
+  function syncControls() {
+    document.querySelectorAll('#layoutRow button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.layout === state.layout);
+    });
+    document.querySelectorAll('#gradeRow button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.grade === state.grade);
+    });
+    document.getElementById('titleInput').value = state.title;
+    document.getElementById('taglineInput').value = state.tagline;
+    document.querySelectorAll('.slot-row').forEach(function (row, i) {
+      row.classList.toggle('selected', i === selectedPanel);
+      var select = row.querySelector('select');
+      if (select) select.value = state.panels[i].source;
+    });
+  }
+
+  function setStatus(text) {
+    var line = document.getElementById('statusLine');
+    if (line) line.textContent = text;
+  }
+
+  function buildSlotRows() {
+    var list = document.getElementById('slotList');
+    list.innerHTML = '';
+    var names = ['Panel A', 'Panel B', 'Panel C', 'Panel D'];
+    state.panels.forEach(function (panel, i) {
+      var row = document.createElement('div');
+      row.className = 'slot-row';
+      var name = document.createElement('span');
+      name.className = 'slot-name';
+      name.textContent = names[i];
+      var select = document.createElement('select');
+      select.setAttribute('aria-label', names[i] + ' photo');
+      var options = Samples.PHOTOS.map(function (photo) {
+        return { value: photo.id, label: photo.label };
+      });
+      options.push({ value: 'upload', label: 'Your upload' });
+      options.forEach(function (opt) {
+        var el = document.createElement('option');
+        el.value = opt.value;
+        el.textContent = opt.label;
+        select.appendChild(el);
+      });
+      select.value = panel.source;
+      select.addEventListener('change', function () {
+        state.panels[i].source = select.value;
+        selectedPanel = i;
+        if (select.value === 'upload' && !uploadedImage) {
+          setStatus('Pick a file to upload first — using the boulevard photo meanwhile.');
+          state.panels[i].source = 'boulevard';
+          select.value = 'boulevard';
+        }
+        render();
+        syncControls();
+      });
+      row.appendChild(name);
+      row.appendChild(select);
+      row.addEventListener('click', function () {
+        selectedPanel = i;
+        syncControls();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  /* --- pointer: click selects a panel, drag pans it, wheel zooms it --- */
+
+  function panelAt(clientX, clientY) {
+    var box = canvas.getBoundingClientRect();
+    var px = (clientX - box.left) / box.width;
+    var py = (clientY - box.top) / box.height;
+    var rects = Cover.panelRects(state.layout);
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i];
+      if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) return i;
+    }
+    return 0;
+  }
+
+  var drag = null;
+
+  canvas.addEventListener('pointerdown', function (ev) {
+    selectedPanel = panelAt(ev.clientX, ev.clientY);
+    drag = { x: ev.clientX, y: ev.clientY, moved: false };
+    canvas.setPointerCapture(ev.pointerId);
+    syncControls();
   });
-}
 
-/** The sample photo behind a slot source key. */
-async function sampleImageFor(source) {
-  if (source === 'boulevard') return fetchImage('samples/boulevard.jpg');
-  if (source === 'pier') return fetchImage('samples/pier.jpg');
-  if (source === 'neon') return buildSampleScene('neon', studioState.seed);
-  if (source === 'palms') return buildSampleScene('palms', studioState.seed);
-  return null;
-}
-
-/** Redraws the preview canvas at the chosen export size. */
-export function repaint() {
-  const size = POST_SIZES[studioState.size] || POST_SIZES.square;
-  if (preview.width !== size.w || preview.height !== size.h) {
-    preview.width = size.w;
-    preview.height = size.h;
-  }
-  renderCover(preview, studioState);
-  const used = studioState.photos.filter((p) => p.img).length;
-  statusLine.textContent = used === 0
-    ? 'Pick a sample photo or upload your own to start.'
-    : `${used} photo${used > 1 ? 's' : ''} loaded · ${POST_SIZES[studioState.size].label} · ${COLOR_GRADES[studioState.grade].label}`;
-}
-
-/** Sets one slot's source (sample, scene or upload) and redraws. */
-export async function assignSlot(index, source, file) {
-  const slot = studioState.photos[index];
-  slot.source = source;
-  if (source === 'upload' && file) {
-    slot.img = await fetchImage(URL.createObjectURL(file));
-  } else {
-    slot.img = await sampleImageFor(source);
-  }
-  slot.zoom = 1;
-  slot.panX = 0;
-  slot.panY = 0;
-  const zoomInput = document.getElementById(`zoom-${index}`);
-  if (zoomInput) zoomInput.value = '100';
-  repaint();
-}
-
-/** Which panel (if any) holds a point of the preview canvas. */
-export function panelAtPoint(clientX, clientY) {
-  const rect = preview.getBoundingClientRect();
-  const x = ((clientX - rect.left) / rect.width) * preview.width;
-  const y = ((clientY - rect.top) / rect.height) * preview.height;
-  const panels = computePanels(studioState.layout, preview.width, preview.height);
-  for (let i = 0; i < panels.length; i++) {
-    const p = panels[i];
-    if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h) return i;
-  }
-  return -1;
-}
-
-/** Syncs every control (radios, selects, text) with the current state. */
-export function syncControls() {
-  document.querySelectorAll('input[name="layout"]').forEach((r) => { r.checked = r.value === studioState.layout; });
-  document.querySelectorAll('input[name="grade"]').forEach((r) => { r.checked = r.value === studioState.grade; });
-  document.querySelectorAll('input[name="size"]').forEach((r) => { r.checked = r.value === studioState.size; });
-  for (let i = 0; i < 4; i++) {
-    const sel = document.getElementById(`source-${i}`);
-    if (sel) sel.value = studioState.photos[i].source;
-  }
-  document.getElementById('title').value = studioState.title;
-  document.getElementById('tagline').value = studioState.tagline;
-}
-
-/** Shuffle: rolls a fresh layout, grade, photo set and caption, then redraws. */
-let lastCaptionIndex = 0;
-export async function shuffleCover() {
-  const roll = seededRandom((Date.now() % 100000) + 13);
-  const layouts = ['hero', 'split', 'strip', 'grid'];
-  const grades = Object.keys(COLOR_GRADES);
-  const samples = ['pier', 'boulevard', 'neon', 'palms'];
-  let captionIndex = Math.floor(roll() * SHUFFLE_CAPTIONS.length);
-  if (captionIndex === lastCaptionIndex) captionIndex = (captionIndex + 1) % SHUFFLE_CAPTIONS.length;
-  lastCaptionIndex = captionIndex;
-  const caption = SHUFFLE_CAPTIONS[captionIndex];
-  studioState.layout = layouts[Math.floor(roll() * layouts.length)];
-  studioState.grade = grades[Math.floor(roll() * grades.length)];
-  studioState.title = caption.title;
-  studioState.tagline = caption.tagline;
-  studioState.seed = 13 + Math.floor(roll() * 90);
-  const picks = [0, 1, 2, 3].map(() => samples[Math.floor(roll() * samples.length)]);
-  for (let i = 0; i < 4; i++) {
-    // eslint-disable-next-line no-await-in-loop
-    await assignSlot(i, picks[i]);
-  }
-  syncControls();
-  repaint();
-  statusLine.textContent = `Shuffled: ${studioState.layout} · ${COLOR_GRADES[studioState.grade].label} · ${studioState.title}`;
-}
-
-// --- controls ---------------------------------------------------------------
-
-for (let i = 0; i < 4; i++) {
-  const source = document.getElementById(`source-${i}`);
-  const file = document.getElementById(`file-${i}`);
-  const zoom = document.getElementById(`zoom-${i}`);
-  if (!source || !file || !zoom) continue;
-  source.addEventListener('change', () => {
-    if (source.value === 'upload') file.click();
-    else assignSlot(i, source.value).catch(() => { statusLine.textContent = 'That photo could not be loaded.'; });
+  canvas.addEventListener('pointermove', function (ev) {
+    if (!drag) return;
+    var box = canvas.getBoundingClientRect();
+    var panel = state.panels[selectedPanel];
+    panel.dx += (ev.clientX - drag.x) / box.width;
+    panel.dy += (ev.clientY - drag.y) / box.height;
+    panel.dx = Math.max(-0.6, Math.min(0.6, panel.dx));
+    panel.dy = Math.max(-0.6, Math.min(0.6, panel.dy));
+    drag.x = ev.clientX;
+    drag.y = ev.clientY;
+    drag.moved = true;
+    render();
   });
-  file.addEventListener('change', () => {
-    if (file.files[0]) assignSlot(i, 'upload', file.files[0]).catch(() => { statusLine.textContent = 'That photo could not be loaded.'; });
+
+  canvas.addEventListener('pointerup', function () {
+    drag = null;
   });
-  zoom.addEventListener('input', () => {
-    studioState.photos[i].zoom = Number(zoom.value) / 100;
-    repaint();
+
+  canvas.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    selectedPanel = panelAt(ev.clientX, ev.clientY);
+    var panel = state.panels[selectedPanel];
+    var factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
+    panel.zoom = Math.max(1, Math.min(3, (panel.zoom || 1) * factor));
+    render();
+    syncControls();
+  }, { passive: false });
+
+  /* --- controls ---------------------------------------------------------- */
+
+  document.getElementById('layoutRow').addEventListener('click', function (ev) {
+    var layout = ev.target.dataset && ev.target.dataset.layout;
+    if (!layout) return;
+    state.layout = layout;
+    render();
+    syncControls();
   });
-}
 
-document.querySelectorAll('input[name="layout"]').forEach((radio) => {
-  radio.addEventListener('change', () => { studioState.layout = radio.value; repaint(); });
-});
-document.querySelectorAll('input[name="grade"]').forEach((radio) => {
-  radio.addEventListener('change', () => { studioState.grade = radio.value; repaint(); });
-});
-document.querySelectorAll('input[name="size"]').forEach((radio) => {
-  radio.addEventListener('change', () => { studioState.size = radio.value; repaint(); });
-});
-document.getElementById('title').addEventListener('input', (e) => { studioState.title = e.target.value; repaint(); });
-document.getElementById('tagline').addEventListener('input', (e) => { studioState.tagline = e.target.value; repaint(); });
-document.getElementById('shuffle').addEventListener('click', () => {
-  shuffleCover().catch(() => { statusLine.textContent = 'Shuffle failed — try again.'; });
-});
+  document.getElementById('gradeRow').addEventListener('click', function (ev) {
+    var grade = ev.target.dataset && ev.target.dataset.grade;
+    if (!grade) return;
+    state.grade = grade;
+    render();
+    syncControls();
+  });
 
-// drag on the preview to pan the photo under the pointer
-let dragPanel = -1;
-let dragLast = null;
-preview.addEventListener('pointerdown', (e) => {
-  dragPanel = panelAtPoint(e.clientX, e.clientY);
-  dragLast = { x: e.clientX, y: e.clientY };
-  preview.setPointerCapture(e.pointerId);
-});
-preview.addEventListener('pointermove', (e) => {
-  if (dragPanel < 0 || !dragLast) return;
-  const rect = preview.getBoundingClientRect();
-  const slot = studioState.photos[dragPanel] || studioState.photos[0];
-  if (!slot || !slot.img) return;
-  slot.panX += ((e.clientX - dragLast.x) / rect.width) * 1.6;
-  slot.panY += ((e.clientY - dragLast.y) / rect.height) * 1.6;
-  slot.panX = Math.max(-0.5, Math.min(0.5, slot.panX));
-  slot.panY = Math.max(-0.5, Math.min(0.5, slot.panY));
-  dragLast = { x: e.clientX, y: e.clientY };
-  repaint();
-});
-preview.addEventListener('pointerup', () => { dragPanel = -1; dragLast = null; });
+  document.getElementById('titleInput').addEventListener('input', function (ev) {
+    state.title = ev.target.value;
+    render();
+  });
 
-// --- export -----------------------------------------------------------------
+  document.getElementById('taglineInput').addEventListener('input', function (ev) {
+    state.tagline = ev.target.value;
+    render();
+  });
 
-document.getElementById('export').addEventListener('click', () => {
-  const size = POST_SIZES[studioState.size];
-  const out = document.createElement('canvas');
-  out.width = size.w;
-  out.height = size.h;
-  renderCover(out, studioState);
-  out.toBlob((blob) => {
-    if (!blob) { statusLine.textContent = 'Export failed in this browser.'; return; }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `sakura-vice-cover-${size.w}x${size.h}.png`;
-    a.click();
-    statusLine.textContent = `Saved sakura-vice-cover-${size.w}x${size.h}.png`;
-  }, 'image/png');
-});
+  document.getElementById('uploadInput').addEventListener('change', function (ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        uploadedImage = img;
+        images.upload = img;
+        state.panels[selectedPanel].source = 'upload';
+        setStatus('Upload loaded into panel ' + 'ABCD'[selectedPanel] + '.');
+        render();
+        syncControls();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
-// --- shots ------------------------------------------------------------------
+  document.getElementById('exportRow').addEventListener('click', function (ev) {
+    var size = ev.target.dataset && ev.target.dataset.export;
+    if (!size) return;
+    var parts = size.split('x');
+    var w = parseInt(parts[0], 10);
+    var h = parseInt(parts[1], 10);
+    var out = Cover.exportCover(state, w, h, images);
+    out.toBlob(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'sakura-vice-' + size + '.png';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      setStatus('Exported ' + size + ' PNG.');
+    }, 'image/png');
+  });
 
-const params = new URLSearchParams(location.search);
-const shot = params.get('shot');
-if (shot) {
-  runShot(shot, params, studioState, repaint, assignSlot);
-} else {
-  // first run: four sample photos already loaded, so the app shows a cover at once
-  Promise.all([assignSlot(0, 'pier'), assignSlot(1, 'boulevard'), assignSlot(2, 'neon'), assignSlot(3, 'palms')])
-    .catch(() => { statusLine.textContent = 'Sample photos could not be loaded.'; });
-}
+  /* Shuffle: seeded, so the same tap order always gives the same cover. */
+  document.getElementById('shuffleButton').addEventListener('click', function () {
+    shuffleStep += 1;
+    var rnd = Samples.makeRandom(Shots.SEED + shuffleStep * 31);
+    var layouts = ['hero', 'split', 'strip', 'grid'];
+    var grades = Object.keys(Cover.GRADES);
+    state.layout = layouts[Math.floor(rnd() * layouts.length)];
+    state.grade = grades[Math.floor(rnd() * grades.length)];
+    var titles = [
+      ['SUNSET HEIST', 'LEONIDA HEAT'],
+      ['NEON HARBOR', 'MIDNIGHT DRIVE'],
+      ['BOULEVARD QUEEN', 'GOLDEN HOUR']
+    ];
+    var pick = titles[Math.floor(rnd() * titles.length)];
+    state.title = pick[0];
+    state.tagline = pick[1];
+    state.panels.forEach(function (panel) {
+      panel.dx = (rnd() - 0.5) * 0.3;
+      panel.dy = (rnd() - 0.5) * 0.3;
+      panel.zoom = 1 + rnd() * 0.5;
+    });
+    setStatus('Shuffled with seed ' + (Shots.SEED + shuffleStep * 31) + '.');
+    render();
+    syncControls();
+  });
+
+  /* --- screenshot mode ---------------------------------------------------- */
+
+  function applyShotMode() {
+    var shot = Shots.shotFromUrl();
+    if (!shot) return false;
+    var preset = Shots.presetFor(shot);
+    if (!preset) return false;
+    state.layout = preset.layout;
+    state.grade = preset.grade;
+    state.title = preset.title;
+    state.tagline = preset.tagline;
+    state.panels = preset.panels;
+    if (preset.mode === 'cover') {
+      document.body.classList.add('shot-cover');
+    }
+    return true;
+  }
+
+  /* --- boot ---------------------------------------------------------------- */
+
+  function resizePreview() {
+    /* In a cover screenshot the canvas takes the viewport's exact
+     * size, so the cover fills the frame with no letterbox bars. */
+    if (document.body.classList.contains('shot-cover')) {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      return;
+    }
+    /* The preview canvas keeps the cover's own aspect for its layout. */
+    var ratio = state.layout === 'split' ? 4 / 5 : 1;
+    if (state.layout === 'strip') ratio = 4 / 5;
+    canvas.width = 1080;
+    canvas.height = Math.round(1080 / ratio);
+  }
+
+  function boot() {
+    buildSlotRows();
+    var inShot = applyShotMode();
+    resizePreview();
+    loadPhotos().then(function () {
+      render();
+      syncControls();
+      if (inShot) setStatus('Screenshot preset: ' + Shots.shotFromUrl() + '.');
+      window.__sakuraViceReady = true;
+    });
+  }
+
+  boot();
+})();

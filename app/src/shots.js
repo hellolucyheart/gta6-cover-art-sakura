@@ -1,50 +1,99 @@
-// Fixed scenes for screenshots: ?shot=editor shows the page with photos loaded;
-// ?shot=cover shows one exported cover alone, drawn at its export size.
-// Query keys: photos (pier|boulevard|neon|palms, comma list), layout, grade,
-// title, tagline, size (square|portrait|wide), seed. window.__shotReady is
-// set once painted.
+/* Sakura Vice — screenshot presets.
+ * ?shot=<name> drives the app into a fixed, seeded state so the four
+ * screenshots are reproducible: seed 17 everywhere, no randomness
+ * beyond the seeded shuffle. */
+(function (global) {
+  'use strict';
 
-import { POST_SIZES } from './main.js';
+  var SEED = 17;
 
-/** Applies the shot's query to the shared editor state. */
-export function applySceneQuery(params, state) {
-  if (params.get('layout')) state.layout = params.get('layout');
-  if (params.get('grade')) state.grade = params.get('grade');
-  if (params.get('title') !== null) state.title = params.get('title');
-  if (params.get('tagline') !== null) state.tagline = params.get('tagline');
-  if (params.get('size')) state.size = params.get('size');
-  if (params.get('seed')) state.seed = Number(params.get('seed')) || 13;
-  return state;
-}
+  /* name -> the state the screenshot shows. The first shot by file
+   * name is the cover: a landscape grid cover. */
+  var SHOT_PRESETS = {
+    grid: {
+      label: 'Cover, grid layout',
+      mode: 'cover',
+      layout: 'grid',
+      grade: 'cotton',
+      title: 'SUNSET HEIST',
+      tagline: 'LEONIDA HEAT',
+      panels: [
+        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.15 },
+        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
+        { source: 'pier', dx: 0, dy: 0, zoom: 1.15 },
+        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
+      ]
+    },
+    editor: {
+      label: 'Editor with a photo loaded',
+      mode: 'editor',
+      layout: 'grid',
+      grade: 'cotton',
+      title: 'SUNSET HEIST',
+      tagline: 'LEONIDA HEAT',
+      panels: [
+        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.15 },
+        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
+        { source: 'pier', dx: 0, dy: 0, zoom: 1.15 },
+        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
+      ]
+    },
+    split: {
+      label: 'Cover, split layout',
+      mode: 'cover',
+      layout: 'split',
+      grade: 'neon',
+      title: 'NEON HARBOR',
+      tagline: 'MIDNIGHT DRIVE',
+      panels: [
+        { source: 'pier', dx: 0, dy: 0, zoom: 1.2 },
+        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 },
+        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.1 },
+        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 }
+      ]
+    },
+    hero: {
+      label: 'Cover, hero layout',
+      mode: 'cover',
+      layout: 'hero',
+      grade: 'sunset',
+      title: 'BOULEVARD QUEEN',
+      tagline: 'GOLDEN HOUR',
+      panels: [
+        { source: 'boulevard', dx: 0, dy: -0.06, zoom: 1.25 },
+        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
+        { source: 'pier', dx: 0, dy: 0, zoom: 1.1 },
+        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
+      ]
+    }
+  };
 
-/** How many panels the current layout needs. */
-export function panelCountFor(layout) {
-  if (layout === 'grid') return 4;
-  if (layout === 'strip') return 3;
-  if (layout === 'split') return 2;
-  return 1;
-}
+  /* The four screenshots the entry ships, in file order. */
+  var SHOT_FILES = [
+    { file: '1-cover-grid.jpg', shot: 'grid', width: 1280, height: 720 },
+    { file: '2-editor.jpg', shot: 'editor', width: 1280, height: 1024 },
+    { file: '3-cover-split.jpg', shot: 'split', width: 1024, height: 1280 },
+    { file: '4-cover-hero.jpg', shot: 'hero', width: 1024, height: 1024 }
+  ];
 
-/** Loads the shot's photos into slots 0..n (comma list, or one photo for all). */
-export async function loadScenePhotos(params, assignSlot, count) {
-  const list = (params.get('photos') || params.get('photo') || 'pier').split(',');
-  for (let i = 0; i < count; i++) {
-    const source = list[i % list.length].trim();
-    // eslint-disable-next-line no-await-in-loop
-    await assignSlot(i, source);
+  function shotFromUrl() {
+    var match = /[?&]shot=([a-z]+)/.exec(window.location.search || '');
+    if (match && SHOT_PRESETS[match[1]]) return match[1];
+    return null;
   }
-}
 
-/** Runs one shot scene, then flags readiness for the screenshot. */
-export async function runShot(shot, params, state, repaint, assignSlot) {
-  applySceneQuery(params, state);
-  if (shot === 'cover') document.body.classList.add('shot-cover');
-  await loadScenePhotos(params, assignSlot, panelCountFor(state.layout));
-  // draw at the shot's export size so the screenshot IS the cover, scaled down
-  const size = POST_SIZES[state.size] || POST_SIZES.square;
-  const canvas = document.getElementById('cover');
-  canvas.width = size.w;
-  canvas.height = size.h;
-  repaint();
-  requestAnimationFrame(() => requestAnimationFrame(() => { window.__shotReady = true; }));
-}
+  function presetFor(name) {
+    var preset = SHOT_PRESETS[name];
+    if (!preset) return null;
+    /* Deep copy so the app can mutate its own state freely. */
+    return JSON.parse(JSON.stringify(preset));
+  }
+
+  global.SakuraViceShots = {
+    SEED: SEED,
+    SHOT_PRESETS: SHOT_PRESETS,
+    SHOT_FILES: SHOT_FILES,
+    shotFromUrl: shotFromUrl,
+    presetFor: presetFor
+  };
+})(window);

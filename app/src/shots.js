@@ -1,99 +1,55 @@
-/* Sakura Vice — screenshot presets.
- * ?shot=<name> drives the app into a fixed, seeded state so the four
- * screenshots are reproducible: seed 17 everywhere, no randomness
- * beyond the seeded shuffle. */
-(function (global) {
-  'use strict';
+// Sakura Vice — screenshot shot mode.
+// ?shot=<name> puts the studio into a fixed, seeded state for screenshots
+// and ?bare=1 hides the editor chrome so a cover fills the frame.
+// The page sets window.__shotReady = true once the shot has rendered.
 
-  var SEED = 17;
+export const SHOT_SEED = 17;
 
-  /* name -> the state the screenshot shows. The first shot by file
-   * name is the cover: a landscape grid cover. */
-  var SHOT_PRESETS = {
-    grid: {
-      label: 'Cover, grid layout',
-      mode: 'cover',
-      layout: 'grid',
-      grade: 'cotton',
-      title: 'SUNSET HEIST',
-      tagline: 'LEONIDA HEAT',
-      panels: [
-        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.15 },
-        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
-        { source: 'pier', dx: 0, dy: 0, zoom: 1.15 },
-        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
-      ]
-    },
-    editor: {
-      label: 'Editor with a photo loaded',
-      mode: 'editor',
-      layout: 'grid',
-      grade: 'cotton',
-      title: 'SUNSET HEIST',
-      tagline: 'LEONIDA HEAT',
-      panels: [
-        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.15 },
-        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
-        { source: 'pier', dx: 0, dy: 0, zoom: 1.15 },
-        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
-      ]
-    },
-    split: {
-      label: 'Cover, split layout',
-      mode: 'cover',
-      layout: 'split',
-      grade: 'neon',
-      title: 'NEON HARBOR',
-      tagline: 'MIDNIGHT DRIVE',
-      panels: [
-        { source: 'pier', dx: 0, dy: 0, zoom: 1.2 },
-        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 },
-        { source: 'boulevard', dx: 0, dy: 0, zoom: 1.1 },
-        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 }
-      ]
-    },
-    hero: {
-      label: 'Cover, hero layout',
-      mode: 'cover',
-      layout: 'hero',
-      grade: 'sunset',
-      title: 'BOULEVARD QUEEN',
-      tagline: 'GOLDEN HOUR',
-      panels: [
-        { source: 'boulevard', dx: 0, dy: -0.06, zoom: 1.25 },
-        { source: 'sunset-boulevard', dx: 0, dy: 0, zoom: 1 },
-        { source: 'pier', dx: 0, dy: 0, zoom: 1.1 },
-        { source: 'neon-pier', dx: 0, dy: 0, zoom: 1 }
-      ]
-    }
-  };
+export const SHOTS = {
+  grid: {
+    label: 'Cover grid',
+    layout: 'grid',
+    grade: 'cotton',
+    title: 'SUNSET HEIST',
+    tagline: 'LEONIDA HEAT',
+    bare: true,
+  },
+  editor: {
+    label: 'Editor with photo',
+    layout: 'split',
+    grade: 'sunset',
+    title: 'NEON HARBOR',
+    tagline: 'MIDNIGHT DRIVE',
+    bare: false,
+  },
+  split: {
+    label: 'Cover split',
+    layout: 'split',
+    grade: 'neon',
+    title: 'NEON HARBOR',
+    tagline: 'MIDNIGHT DRIVE',
+    bare: true,
+  },
+  hero: {
+    label: 'Cover hero',
+    layout: 'hero',
+    grade: 'cotton',
+    title: 'BOULEVARD QUEEN',
+    tagline: 'GOLDEN HOUR',
+    bare: true,
+  },
+};
 
-  /* The four screenshots the entry ships, in file order. */
-  var SHOT_FILES = [
-    { file: '1-cover-grid.jpg', shot: 'grid', width: 1280, height: 720 },
-    { file: '2-editor.jpg', shot: 'editor', width: 1280, height: 1024 },
-    { file: '3-cover-split.jpg', shot: 'split', width: 1024, height: 1280 },
-    { file: '4-cover-hero.jpg', shot: 'hero', width: 1024, height: 1024 }
-  ];
+export function readShotParams() {
+  const params = new URLSearchParams(window.location.search);
+  const name = params.get('shot') || '';
+  const preset = SHOTS[name] || null;
+  const bare = params.get('bare') === '1' || (preset ? preset.bare : false);
+  return { name, preset, bare };
+}
 
-  function shotFromUrl() {
-    var match = /[?&]shot=([a-z]+)/.exec(window.location.search || '');
-    if (match && SHOT_PRESETS[match[1]]) return match[1];
-    return null;
-  }
-
-  function presetFor(name) {
-    var preset = SHOT_PRESETS[name];
-    if (!preset) return null;
-    /* Deep copy so the app can mutate its own state freely. */
-    return JSON.parse(JSON.stringify(preset));
-  }
-
-  global.SakuraViceShots = {
-    SEED: SEED,
-    SHOT_PRESETS: SHOT_PRESETS,
-    SHOT_FILES: SHOT_FILES,
-    shotFromUrl: shotFromUrl,
-    presetFor: presetFor
-  };
-})(window);
+export function markShotReady(label) {
+  window.__shotReady = true;
+  document.documentElement.dataset.shot = label;
+  document.title = `Sakura Vice — ${label}`;
+}

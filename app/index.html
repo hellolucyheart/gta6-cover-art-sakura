@@ -7,80 +7,70 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="masthead">
-  <div class="masthead-title">
-    <h1>SAKURA VICE</h1>
-    <p>Cover Art Studio &middot; in the style of a Leonida sunset</p>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">🌸</span>
+    <div>
+      <h1>Sakura Vice</h1>
+      <p>GTA 6-style cover art studio</p>
+    </div>
   </div>
-  <div class="masthead-badge">GTA 6 &middot; fan-made cover maker</div>
+  <div class="top-actions">
+    <button id="shuffleBtn" type="button" class="ghost">Shuffle scenes</button>
+    <button id="resetBtn" type="button" class="ghost">Reset</button>
+  </div>
 </header>
 
-<main class="workbench">
-  <section class="controls" aria-label="Cover controls">
-    <div class="control-group">
-      <span class="control-label">Layout</span>
-      <div class="button-row" id="layoutRow">
-        <button type="button" data-layout="hero">Hero</button>
-        <button type="button" data-layout="split">Split</button>
-        <button type="button" data-layout="strip">Strip</button>
-        <button type="button" data-layout="grid" class="active">Grid</button>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <span class="control-label">Colour grade</span>
-      <div class="button-row" id="gradeRow">
-        <button type="button" data-grade="sunset">Sunset</button>
-        <button type="button" data-grade="neon">Neon</button>
-        <button type="button" data-grade="cotton" class="active">Cotton Candy</button>
-        <button type="button" data-grade="noir">Noir</button>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <span class="control-label">Caption</span>
-      <label class="field">Title
-        <input id="titleInput" type="text" maxlength="24" value="SUNSET HEIST" autocomplete="off">
-      </label>
-      <label class="field">Tagline
-        <input id="taglineInput" type="text" maxlength="32" value="LEONIDA HEAT" autocomplete="off">
-      </label>
-    </div>
-
-    <div class="control-group">
-      <span class="control-label">Photo slots</span>
-      <p class="hint">Click a panel on the cover to select it, then pick its photo. Drag to pan, scroll to zoom.</p>
-      <div class="slot-list" id="slotList"></div>
-      <label class="upload">Upload your own photo
-        <input id="uploadInput" type="file" accept="image/*" hidden>
-      </label>
-    </div>
-
-    <div class="control-group">
-      <span class="control-label">Export PNG</span>
-      <div class="button-row" id="exportRow">
-        <button type="button" data-export="1080x1080">1080 &times; 1080</button>
-        <button type="button" data-export="1080x1350">1080 &times; 1350</button>
-        <button type="button" data-export="1920x1080">1920 &times; 1080</button>
-      </div>
-      <button type="button" id="shuffleButton" class="shuffle">Shuffle the cover</button>
-      <p class="hint" id="statusLine">Ready.</p>
-    </div>
+<main class="studio">
+  <section class="stage-wrap">
+    <canvas id="stage" width="1080" height="1080" aria-label="Cover preview"></canvas>
+    <p class="hint">Drag a panel to pan it · scroll over a panel to zoom · click a panel to select it</p>
   </section>
 
-  <section class="stage" aria-label="Cover preview">
-    <canvas id="coverCanvas" width="1080" height="1080"></canvas>
-    <p class="stage-caption">Live preview &mdash; drag a panel to pan, scroll to zoom, click to select.</p>
-  </section>
+  <aside class="panel">
+    <section class="group">
+      <h2>Layout — <span id="layoutName">grid</span></h2>
+      <div id="layoutRow" class="btn-row"></div>
+    </section>
+
+    <section class="group">
+      <h2>Colour grade — <span id="gradeName">Cotton Candy</span></h2>
+      <div id="gradeRow" class="btn-row"></div>
+    </section>
+
+    <section class="group">
+      <h2>Selected panel photo</h2>
+      <div id="sourceRow" class="btn-row"></div>
+      <label class="upload">
+        Upload your own photo
+        <input id="uploadInput" type="file" accept="image/*">
+      </label>
+    </section>
+
+    <section class="group">
+      <h2>Cover text</h2>
+      <label class="field">
+        <span>Title</span>
+        <input id="titleInput" type="text" value="SUNSET HEIST" maxlength="24">
+      </label>
+      <label class="field">
+        <span>Tagline</span>
+        <input id="taglineInput" type="text" value="LEONIDA HEAT" maxlength="32">
+      </label>
+    </section>
+
+    <section class="group">
+      <h2>Export PNG</h2>
+      <div id="sizeRow" class="btn-row"></div>
+      <p id="exportNote" class="note">Pick a size to download the cover as a PNG.</p>
+    </section>
+  </aside>
 </main>
 
-<footer class="footnote">
-  <p>Fan-made cover maker. No Rockstar Games artwork, logos or fonts. Photos stay on your machine.</p>
+<footer class="foot">
+  <p>Sakura Vice · built for the make.fun “Make GTA 6 Cover Art” bounty · photos: bundled samples or your upload · scenes drawn in-browser</p>
 </footer>
 
-<script src="src/samples.js"></script>
-<script src="src/cover.js"></script>
-<script src="src/shots.js"></script>
-<script src="src/main.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>
